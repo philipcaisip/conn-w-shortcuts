@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from recruitpicker import NodeRecruitPicker as RecruitPicker
 
-
 USAGE_MSG = "Usage: main <graph file name> <mode>"
 
 if (len(sys.argv) < 2):
@@ -15,6 +14,7 @@ if (len(sys.argv) < 2):
 
 inp_file = sys.argv[1]
 
+# TODO make this more robust against different delimiters
 G = nx.read_adjlist(inp_file, delimiter="\t", create_using=nx.DiGraph)
 print(G)
 
@@ -38,6 +38,9 @@ MAX_BUDGET = 12
 budgets = np.array([x for x in range(1, MAX_BUDGET+1)])
 res = np.array([])
 
+fig = plt.figure()
+ax = plt.subplot(111)
+
 for func in picker.ready_pickers:
     func_name = func.__name__
 
@@ -48,6 +51,7 @@ for func in picker.ready_pickers:
         else:
             print(f"WARNING: No node found by {func_name} for budget {i}.")
         print(model.graph)
+        print(f"Src count: {len(model.src_set)}, Trg count: {len(model.trg_set)}")
 
         if i+1 in budgets:
             res = np.append(res, model.sigma())
@@ -59,13 +63,19 @@ for func in picker.ready_pickers:
             f"{func_name},{init_sigma},{','.join(['%.5f' % s for s in res])}\n")
 
     print(res)
-    plt.plot(np.append(0, budgets), np.append(init_sigma, res), 'o-', 
+    ax.plot(np.append(0, budgets), np.append(init_sigma, res), 'o-', 
              label=func_name, linewidth=2)
     res = np.array([])
+
+box = ax.get_position()
+ax.set_position([box.x0, box.y0 + box.height * 0.1,
+                 box.width, box.height * 0.9])
 
 plt.xticks(np.arange(0, MAX_BUDGET+1, 2))
 plt.xlabel("Budget")
 plt.ylabel("Network Familiarity")
 
-plt.legend()
+ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05),
+          fancybox=True, shadow=True, ncol=3)
+
 plt.show()

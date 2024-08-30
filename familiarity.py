@@ -39,6 +39,9 @@ class FamiliartyModel(CascadingModel):
     def __init__(self, graph, src_set, trg_set):
         self.src_set = src_set
         self.trg_set = trg_set
+
+        self.init_src_set = src_set.copy()
+        self.init_trg_set = trg_set.copy()
         self.init_graph = graph.copy()
 
         # holds graph with only live edges, not important in construction
@@ -179,6 +182,8 @@ class FamiliartyModel(CascadingModel):
 
     def reset(self):
         self.graph = self.init_graph.copy()
+        self.src_set = self.init_src_set.copy()
+        self.trg_set = self.init_trg_set.copy()
 
 
 if __name__=="__main__":

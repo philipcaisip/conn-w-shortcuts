@@ -1,5 +1,4 @@
 import networkx as nx
-import igraph as ig
 from familiarity import FamiliartyModel as Fam
 from pathpicker import PathPicker
 import random
