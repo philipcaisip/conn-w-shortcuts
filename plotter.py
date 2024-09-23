@@ -1,3 +1,9 @@
+"""
+Takes raw data in csv format and plots it with matplotlib.
+"""
+
+# TODO generalise so don't need to change source code for each graph
+
 import sys
 import matplotlib.pyplot as plt
 import numpy as np

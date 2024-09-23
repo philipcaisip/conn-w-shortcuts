@@ -1,5 +1,4 @@
 import networkx as nx
-import igraph as ig
 from familiarity import FamiliartyModel as Fam
 from pathpicker import PathPicker
 import random
@@ -72,7 +71,6 @@ def betweeness(fm: Fam):
         candidates = non_edges_dir(fm.graph)
 
     for shortcut in candidates:
-        # temp_graph = ig.Graph(edges=fm.graph.edges(), directed=True)
         # TODO optimise by just calcing the one edge
 
         u, v = shortcut

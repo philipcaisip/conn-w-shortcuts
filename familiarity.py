@@ -184,13 +184,3 @@ class FamiliartyModel(CascadingModel):
         self.graph = self.init_graph.copy()
         self.src_set = self.init_src_set.copy()
         self.trg_set = self.init_trg_set.copy()
-
-
-if __name__=="__main__":
-    CM = CascadingModel(nx.complete_graph(10), {1})
-    print(CM.graph.number_of_edges())
-    print(CM.cascade())
-    print(CM.graph.number_of_edges())
-
-    FM = FamiliartyModel(nx.complete_graph(10), {0, 1, 2}, {6, 7})
-    print(FM.sigma_sampled())
