@@ -4,11 +4,20 @@ import random
 import numpy as np
 
 class PathPicker:
+    ready_pickers = []
+
     def __init__(self, fm: Fam):
         self.fm = fm
         self.cutoff = self.fm.graph.number_of_nodes() / 10
 
-    def get_candidate_paths(self):
+        # change this as needed to change what is tested
+        self.ready_pickers = [self.greedy, 
+                              self.random,
+                              self.shortest,
+                              self.avg_closeness,
+                              self.avg_betweenness]
+
+    def candidate_paths(self):
         rtn_list = []
 
         complete_graph = nx.complete_graph(self.fm.graph.nodes)
@@ -24,88 +33,87 @@ class PathPicker:
         
         return rtn_list
     
-    def select_path(self, heur):
-        if heur == "RANDOM":
-            return random.choice(self.get_candidate_paths())
+    def random(self):
+        return random.choice(self.candidate_paths())
+
+    def greedy(self):
+        best_sigma = -1
+        best_path = []
+
+        candidate_paths = self.candidate_paths()
+
+        sigmas = self.fm.sigma_optm_paths(candidate_paths, 50)
+
+        next_selection_size = int(len(sigmas) / 10)            
+        best_idx = np.argpartition(sigmas, -next_selection_size)[-next_selection_size:]
+
+        next_selection = []
+        for i in best_idx:
+            next_selection.append(candidate_paths[i])
+
+        sigmas = self.fm.sigma_optm_paths(candidate_paths, 150)
+        # index of best path in next selection
+        best_idx = np.argpartition(sigmas, -1)[-1:]
+
+        return candidate_paths[best_idx]
+
+    def shortest(self):
+        best_path = []
+        shortest_len = None
         
-        elif heur == "GREEDY":
-            best_sigma = -1
-            best_path = []
-
-            candidate_paths = self.get_candidate_paths()
-
-            sigmas = self.fm.sigma_optm_paths(candidate_paths, 50)
-
-            next_selection_size = int(len(sigmas) / 10)            
-            best_idx = np.argpartition(sigmas, -next_selection_size)[-next_selection_size:]
-
-            next_selection = []
-            for i in best_idx:
-                next_selection.append(candidate_paths[i])
-
-            sigmas = self.fm.sigma_optm_paths(candidate_paths, 150)
-            # index of best path in next selection
-            best_idx = np.argpartition(sigmas, -1)[-1:]
-
-            return candidate_paths[best_idx]
+        for path in self.candidate_paths():
+            if shortest_len == None or len(path) < shortest_len:
+                shortest_len = len(path)
+                best_path = path
         
-        elif heur == "SHORTEST":
-            best_path = []
-            shortest_len = None
+        return best_path
+
+    def avg_betweenness(self):
+        best_btw = -1
+        best_path = []
+
+        for path in self.candidate_paths():
+            temp_graph = self.fm.graph.copy()
+            for edge in path:
+                u, v = edge
+                if not temp_graph.has_edge(u, v):
+                    temp_graph.add_edge(u, v)
+
+            all_betweeness = nx.edge_betweenness_centrality(temp_graph)
+            current_btw = 0
+            for edge in path:
+                current_btw += all_betweeness[edge]
+            current_btw /= len(path)
+
+            if current_btw > best_btw:
+                best_btw = current_btw
+                best_path = path 
+
+        return best_path
+
+    def avg_closeness(self):
+        best_clsn = -1
+        best_path = []
+
+        for path in self.candidate_paths():
+            temp_graph = self.fm.graph.copy()
+            for edge in path:
+                u, v = edge
+                if not temp_graph.has_edge(u, v):
+                    temp_graph.add_edge(u, v)
+
+            all_closeness = nx.closeness_centrality(temp_graph)
             
-            for path in self.get_candidate_paths():
-                if shortest_len == None or len(path) < shortest_len:
-                    shortest_len = len(path)
-                    best_path = path
-            
-            return best_path
-        
-        elif heur == "AVG_BETWEENNESS":
-            best_btw = -1
-            best_path = []
+            # loop adds closness of target for each edge, so add the first
+            # node's closeness manually
+            current_clsn = all_closeness[path[0][0]]
+            for edge in path:
+                _, v = edge
+                current_clsn += all_closeness[v]
+            current_clsn /= len(path) + 1
 
-            for path in self.get_candidate_paths():
-                temp_graph = self.fm.graph.copy()
-                for edge in path:
-                    u, v = edge
-                    if not temp_graph.has_edge(u, v):
-                        temp_graph.add_edge(u, v)
+            if current_clsn > best_clsn:
+                best_clsn = current_clsn
+                best_path = path 
 
-                all_betweeness = nx.edge_betweenness_centrality(temp_graph)
-                current_btw = 0
-                for edge in path:
-                    current_btw += all_betweeness[edge]
-                current_btw /= len(path)
-
-                if current_btw > best_btw:
-                    best_btw = current_btw
-                    best_path = path 
-
-            return best_path
-        
-        elif heur == "AVG_CLOSNESS":
-            best_clsn = -1
-            best_path = []
-
-            for path in self.get_candidate_paths():
-                temp_graph = self.fm.graph.copy()
-                for edge in path:
-                    u, v = edge
-                    if not temp_graph.has_edge(u, v):
-                        temp_graph.add_edge(u, v)
-
-                all_closeness = nx.closeness_centrality(temp_graph)
-                
-                # loop adds closness of target for each edge, so add the first
-                # node's closeness manually
-                current_clsn = all_closeness[path[0][0]]
-                for edge in path:
-                    _, v = edge
-                    current_clsn += all_closeness[v]
-                current_clsn /= len(path) + 1
-
-                if current_clsn > best_clsn:
-                    best_clsn = current_clsn
-                    best_path = path 
-
-            return best_path
+        return best_path

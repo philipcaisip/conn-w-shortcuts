@@ -46,7 +46,6 @@ class ShortcutPicker:
         best_sigma = -1
 
         if self.restricted:
-            print("RESTRICTION APPLIES")
             candidates = self.non_edges_between_st()
         else:
             candidates = self.non_edges()
@@ -61,14 +60,18 @@ class ShortcutPicker:
         return best_shortcut
 
     def random(self):
-        pass
+        if self.restricted:
+            candidates = self.non_edges_between_st()
+        else:
+            candidates = self.non_edges()
+                
+        return random.choice(tuple(candidates))
 
     def betweenness(self):
         best_shortcut = None
         best_betweeness = -1
         
         if self.restricted:
-            print("RESTRICTION APPLIES")
             candidates = self.non_edges_between_st()
         else:
             candidates = self.non_edges()
