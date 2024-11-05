@@ -21,6 +21,14 @@ class NodeRecruitPicker:
                               self.both_degree]
         # self.ready_pickers = [self.betweenness_global]
 
+        self.degree_pickers = [self.in_degree,
+                               self.out_degree,
+                               self.both_degree]
+        
+        self.ready_fast_degree_pickers = [self.get_in_degree_maps,
+                                          self.get_out_degree_maps,
+                                          self.get_both_degree_maps]
+
     def greedy(self):
         util_map = self.fm.get_node_to_source_fam_map()
         return max(util_map, key=util_map.get)
@@ -99,48 +107,121 @@ class NodeRecruitPicker:
 
         return min(util_map, key=util_map.get)
     
-    def in_degree(self):
+    def in_degree(self, hops=1):
         util_map = {}
 
-        for node in self.fm.graph.nodes:
-            if node in self.fm.src_set or node in self.fm.trg_set:
-                continue
-
-            for s in self.fm.src_set:
-                if (s, node) in self.fm.graph.edges:
-                    util_map[node] = util_map.get(node, 0) + 1
+        for s in self.fm.src_set:
+            path_lens = nx.single_source_shortest_path_length(self.fm.graph, s, hops)
+            for node in path_lens:
+                if node in self.fm.src_set or node in self.fm.trg_set:
+                    continue
+                util_map[node] = util_map.get(node, 0) + (1 / path_lens[node])
 
         return max(util_map, key=util_map.get) if len(util_map) > 0 else None
     
-    def out_degree(self):
+    def out_degree(self, hops=1):
         util_map = {}
 
-        for node in self.fm.graph.nodes:
-            if node in self.fm.src_set or node in self.fm.trg_set:
-                continue
-
-            for t in self.fm.trg_set:
-                if (node, t) in self.fm.graph.edges:
-                    util_map[node] = util_map.get(node, 0) + 1
-
-        
-        return max(util_map, key=util_map.get) if len(util_map) > 0 else None
-    
-    def both_degree(self):
-        util_map = {}
-
-        for node in self.fm.graph.nodes:
-            if node in self.fm.src_set or node in self.fm.trg_set:
-                continue
-
-            for s in self.fm.src_set:
-                if (s, node) in self.fm.graph.edges:
-                    util_map[node] = util_map.get(node, 0) + 1
-
-            for t in self.fm.trg_set:
-                if (node, t) in self.fm.graph.edges:
-                    util_map[node] = util_map.get(node, 0) + 1
+        for t in self.fm.trg_set:
+            path_lens = nx.single_target_shortest_path_length(self.fm.graph, t, hops)
+            for node in path_lens:
+                if node in self.fm.src_set or node in self.fm.trg_set:
+                    continue
+                util_map[node] = util_map.get(node, 0) + (1 / path_lens[node])
 
         return max(util_map, key=util_map.get) if len(util_map) > 0 else None
     
+    def both_degree(self, hops=1):
+        util_map = {}
+
+        for s in self.fm.src_set:
+            path_lens = nx.single_source_shortest_path_length(self.fm.graph, s, hops)
+            for node in path_lens:
+                if node in self.fm.src_set or node in self.fm.trg_set:
+                    continue
+                util_map[node] = util_map.get(node, 0) + (1 / path_lens[node])
+
+        for t in self.fm.trg_set:
+            path_lens = nx.single_target_shortest_path_length(self.fm.graph, t, hops)
+            for node in path_lens:
+                if node in self.fm.src_set or node in self.fm.trg_set:
+                    continue
+                util_map[node] = util_map.get(node, 0) + (1 / path_lens[node])
+
+        return max(util_map, key=util_map.get) if len(util_map) > 0 else None
+    
+    
+    ## time-efficient way of getting multihop degrees
+    def get_in_degree_maps(self, hops):
+        hop_maps = []  # array to hold maps for 1 hop, then 2, then 3 etc
+
+        # populate hop map
+        for _ in range(hops):
+            hop_maps.append({})
+
+        for s in self.fm.src_set:
+            path_lens = nx.single_source_shortest_path_length(self.fm.graph, s, hops)
+
+            for hop in range(hops):
+                for node in path_lens:
+                    if node in self.fm.src_set or node in self.fm.trg_set:
+                        continue
+
+                    if path_lens[node] <= hops+1:
+                        hop_maps[hop][node] = hop_maps[hop].get(node, 0) + (1 / path_lens[node])
+
+        return hop_maps
+
+    def get_out_degree_maps(self, hops):
+        hop_maps = []  # array to hold maps for 1 hop, then 2, then 3 etc
+
+        # populate hop map
+        for _ in range(hops):
+            hop_maps.append({})
+
+        for t in self.fm.trg_set:
+            path_lens = nx.single_target_shortest_path_length(self.fm.graph, t, hops)
+            path_lens = dict(path_lens)
+
+            for hop in range(hops):
+                for node in path_lens:
+                    if node in self.fm.src_set or node in self.fm.trg_set:
+                        continue
+
+                    if path_lens[node] <= hops+1:
+                        hop_maps[hop][node] = hop_maps[hop].get(node, 0) + (1 / path_lens[node])
+
+        return hop_maps
+
+    def get_both_degree_maps(self, hops):
+        hop_maps = []  # array to hold maps for 1 hop, then 2, then 3 etc
+
+        # populate hop map
+        for _ in range(hops):
+            hop_maps.append({})
+
+        for s in self.fm.src_set:
+            path_lens = nx.single_source_shortest_path_length(self.fm.graph, s, hops)
+
+            for hop in range(hops):
+                for node in path_lens:
+                    if node in self.fm.src_set or node in self.fm.trg_set:
+                        continue
+
+                    if path_lens[node] <= hops+1:
+                        hop_maps[hop][node] = hop_maps[hop].get(node, 0) + (1 / path_lens[node])
+
+        for t in self.fm.trg_set:
+            path_lens = nx.single_target_shortest_path_length(self.fm.graph, t, hops)
+            path_lens = dict(path_lens)
+
+            for hop in range(hops):
+                for node in path_lens:
+                    if node in self.fm.src_set or node in self.fm.trg_set:
+                        continue
+
+                    if path_lens[node] <= hops+1:
+                        hop_maps[hop][node] = hop_maps[hop].get(node, 0) + (1 / path_lens[node])
+
+        return hop_maps
     
